@@ -9,16 +9,126 @@
 
 #include "globals.hpp"
 
+Hyprlang::CParseResult handleEdgeEffect(const char* command, const char* value) {
+    Hyprlang::CParseResult result;
+
+    CVarList vars(value);
+
+    if (vars[0].empty() || vars[1].empty()) {
+        result.setError("requires edge and dispatcher");
+        return result;
+    }
+
+    eEdge edge;
+    if (vars[0] == "top")
+        edge = TOP;
+    else if (vars[0] == "bottom")
+        edge = BOTTOM;
+    else if (vars[0] == "left")
+        edge = LEFT;
+    else if (vars[0] == "right")
+        edge = RIGHT;
+    else if (vars[0] == "topleft")
+        edge = TOPLEFT;
+    else if (vars[0] == "topright")
+        edge = TOPRIGHT;
+    else if (vars[0] == "bottomleft")
+        edge = BOTTOMLEFT;
+    else if (vars[0] == "bottomright")
+        edge = BOTTOMRIGHT;
+    else {
+        result.setError(std::format("invalid edge {}", vars[0]).c_str());
+        return result;
+    }
+
+    const auto DISPATCHER = g_pKeybindManager->m_mDispatchers.find(vars[1]);
+    if (DISPATCHER == g_pKeybindManager->m_mDispatchers.end()) {
+        result.setError(std::format("invalid dispatcher {}", vars[1]).c_str());
+        return result;
+    }
+
+    g_pGlobalState->edgeEffects.emplace_back(edge, vars[1], vars[2]);
+
+    return result;
+}
+
+SDispatchResult moveCursorToEdge(std::string args) {
+    const auto PMONITOR = g_pCompositor->getMonitorFromCursor();
+    const auto pos = g_pPointerManager->position();
+
+    Vector2D warpTo;
+    if (args == "top")
+        warpTo = {pos.x, PMONITOR->vecPosition.y};
+    else if (args == "bottom")
+        warpTo = {pos.x, PMONITOR->vecPosition.y + PMONITOR->vecSize.y - 1.0};
+    else if (args == "left")
+        warpTo = {PMONITOR->vecPosition.x, pos.y};
+    else if (args == "right")
+        warpTo = {PMONITOR->vecPosition.x + PMONITOR->vecSize.x - 1.0, pos.y};
+    else
+        return {.success = false, .error = std::format("hypredge:movecursortoedge: invalid edge {}", args)};
+
+    g_pCompositor->warpCursorTo(warpTo, true);
+
+    return {};
+}
+
+std::optional<eEdge> getEdge(const Vector2D localPos, const Vector2D monitorSize) {
+    static auto* const PCORNERBARRIER = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hypredge:corner_barrier")->getDataStaticPtr();
+
+    const auto distToTop = localPos.y;
+    const auto distToBottom = (monitorSize - localPos).y - 1;
+    const auto distToLeft = localPos.x;
+    const auto distToRight = (monitorSize - localPos).x - 1;
+    const auto validEdgeX = distToRight > **PCORNERBARRIER && distToLeft > **PCORNERBARRIER;
+    const auto validEdgeY = distToTop > **PCORNERBARRIER && distToBottom > **PCORNERBARRIER;
+
+    if (!distToTop && !distToLeft)
+        return TOPLEFT;
+    else if (!distToTop && !distToRight)
+        return TOPRIGHT;
+    else if (!distToBottom && !distToLeft)
+        return BOTTOMLEFT;
+    else if (!distToBottom && !distToRight)
+        return BOTTOMRIGHT;
+
+    if (!distToTop && validEdgeX)
+        return TOP;
+    else if (!distToBottom && validEdgeX)
+        return BOTTOM;
+    else if (!distToLeft && validEdgeY)
+        return LEFT;
+    else if (!distToRight && validEdgeY)
+        return RIGHT;
+
+    return std::nullopt;
+}
+
 void onMouseMove(const Vector2D pos) {
     auto monitor = g_pCompositor->getMonitorFromVector(pos);
     auto localPos = pos - monitor->vecPosition;
-    if (localPos.x == 0 && monitor->activeWorkspace->getFullscreenWindow() == nullptr) {
-        monitor->changeWorkspace(getWorkspaceIDNameFromString("e-1").id, false, true);
-        g_pCompositor->warpCursorTo(Vector2D(monitor->vecSize.x - 2, pos.y), true);
-    } else if (monitor->vecSize.x - localPos.x < 2 && monitor->activeWorkspace->getFullscreenWindow() == nullptr) {
-        monitor->changeWorkspace(getWorkspaceIDNameFromString("e+1").id, false, true);
-        g_pCompositor->warpCursorTo(Vector2D(1.0, pos.y), true);
+
+    auto edge = getEdge(localPos, monitor->vecSize);
+    if (!edge.has_value()) {
+        g_pGlobalState->alreadyActivated = false;
+        return;
     }
+
+    // If we've already activated from this edge,
+    // then don't do it again.
+    if (g_pGlobalState->alreadyActivated)
+        return;
+    g_pGlobalState->alreadyActivated = true;
+
+    for (auto edgeEffect : g_pGlobalState->edgeEffects) {
+        if (edgeEffect.edge != edge.value())
+            continue;
+        g_pKeybindManager->m_mDispatchers[edgeEffect.dispatcher](edgeEffect.arg);
+    }
+}
+
+static void onPreConfigReload() {
+    g_pGlobalState->edgeEffects.clear();
 }
 
 // Do NOT change this function.
@@ -34,12 +144,21 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     // ALWAYS add this to your plugins. It will prevent random crashes coming from
     // mismatched header versions.
     if (HASH != GIT_COMMIT_HASH) {
-        HyprlandAPI::addNotification(PHANDLE, "[MyPlugin] Mismatched headers! Can't proceed.",
+        HyprlandAPI::addNotification(PHANDLE, "[hypredge] Mismatched headers! Can't proceed.",
                                      CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
-        throw std::runtime_error("[MyPlugin] Version mismatch");
+        throw std::runtime_error("[hypredge] Version mismatch");
     }
 
-    static auto mouseMovePtr = HyprlandAPI::registerCallbackDynamic(PHANDLE, "mouseMove", [&](void* self, SCallbackInfo& info, std::any data) { onMouseMove(std::any_cast<Vector2D>(data)); });
+    g_pGlobalState = makeUnique<SGlobalState>();
 
-    return {"MyPlugin", "An amazing plugin that is going to change the world!", "Me", "1.0"};
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hypredge:corner_barrier", Hyprlang::INT{100});
+
+    HyprlandAPI::addConfigKeyword(PHANDLE, "edge-effect", handleEdgeEffect, {false});
+
+    HyprlandAPI::addDispatcherV2(PHANDLE, "hypredge:movecursortoedge", moveCursorToEdge);
+
+    static auto mouseMovePtr = HyprlandAPI::registerCallbackDynamic(PHANDLE, "mouseMove", [&](void* self, SCallbackInfo& info, std::any data) { onMouseMove(std::any_cast<Vector2D>(data)); });
+    static auto clearConfigPtr = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preConfigReload", [&](void* self, SCallbackInfo& info, std::any data) { onPreConfigReload(); });
+
+    return {"hypredge", "Trigger dispatchers on screen edges", "CyrenArkade", "0.1"};
 }
