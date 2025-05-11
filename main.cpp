@@ -41,8 +41,8 @@ Hyprlang::CParseResult handleEdgeEffect(const char* command, const char* value) 
         return result;
     }
 
-    const auto DISPATCHER = g_pKeybindManager->m_mDispatchers.find(vars[1]);
-    if (DISPATCHER == g_pKeybindManager->m_mDispatchers.end()) {
+    const auto DISPATCHER = g_pKeybindManager->m_dispatchers.find(vars[1]);
+    if (DISPATCHER == g_pKeybindManager->m_dispatchers.end()) {
         result.setError(std::format("invalid dispatcher {}", vars[1]).c_str());
         return result;
     }
@@ -58,13 +58,13 @@ SDispatchResult moveCursorToEdge(std::string args) {
 
     Vector2D warpTo;
     if (args == "top")
-        warpTo = {pos.x, PMONITOR->vecPosition.y};
+        warpTo = {pos.x, PMONITOR->m_position.y};
     else if (args == "bottom")
-        warpTo = {pos.x, PMONITOR->vecPosition.y + PMONITOR->vecSize.y - 1.0};
+        warpTo = {pos.x, PMONITOR->m_position.y + PMONITOR->m_size.y - 1.0};
     else if (args == "left")
-        warpTo = {PMONITOR->vecPosition.x, pos.y};
+        warpTo = {PMONITOR->m_position.x, pos.y};
     else if (args == "right")
-        warpTo = {PMONITOR->vecPosition.x + PMONITOR->vecSize.x - 1.0, pos.y};
+        warpTo = {PMONITOR->m_position.x + PMONITOR->m_size.x - 1.0, pos.y};
     else
         return {.success = false, .error = std::format("hypredge:movecursortoedge: invalid edge {}", args)};
 
@@ -106,9 +106,9 @@ std::optional<eEdge> getEdge(const Vector2D localPos, const Vector2D monitorSize
 
 void onMouseMove(const Vector2D pos) {
     auto monitor = g_pCompositor->getMonitorFromVector(pos);
-    auto localPos = pos - monitor->vecPosition;
+    auto localPos = pos - monitor->m_position;
 
-    auto edge = getEdge(localPos, monitor->vecSize);
+    auto edge = getEdge(localPos, monitor->m_size);
     if (!edge.has_value()) {
         g_pGlobalState->alreadyActivated = false;
         return;
@@ -123,7 +123,7 @@ void onMouseMove(const Vector2D pos) {
     for (auto edgeEffect : g_pGlobalState->edgeEffects) {
         if (edgeEffect.edge != edge.value())
             continue;
-        g_pKeybindManager->m_mDispatchers[edgeEffect.dispatcher](edgeEffect.arg);
+        g_pKeybindManager->m_dispatchers[edgeEffect.dispatcher](edgeEffect.arg);
     }
 }
 
