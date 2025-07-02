@@ -23,7 +23,7 @@ struct SEdgeEffect {
 
 struct SGlobalState {
     std::vector<SEdgeEffect> edgeEffects;
-    bool alreadyActivated;
+    std::optional<eEdge> alreadyActivated;
 };
 
 inline UP<SGlobalState> g_pGlobalState;

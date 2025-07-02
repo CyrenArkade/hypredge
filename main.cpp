@@ -58,13 +58,13 @@ SDispatchResult moveCursorToEdge(std::string args) {
 
     Vector2D warpTo;
     if (args == "top")
-        warpTo = {pos.x, PMONITOR->m_position.y};
+        warpTo = {pos.x, PMONITOR->m_position.y + 1};
     else if (args == "bottom")
-        warpTo = {pos.x, PMONITOR->m_position.y + PMONITOR->m_size.y - 1.0};
+        warpTo = {pos.x, PMONITOR->m_position.y + PMONITOR->m_size.y - 2};
     else if (args == "left")
-        warpTo = {PMONITOR->m_position.x, pos.y};
+        warpTo = {PMONITOR->m_position.x + 1, pos.y};
     else if (args == "right")
-        warpTo = {PMONITOR->m_position.x + PMONITOR->m_size.x - 1.0, pos.y};
+        warpTo = {PMONITOR->m_position.x + PMONITOR->m_size.x - 2, pos.y};
     else
         return {.success = false, .error = std::format("hypredge:movecursortoedge: invalid edge {}", args)};
 
@@ -110,15 +110,15 @@ void onMouseMove(const Vector2D pos) {
 
     auto edge = getEdge(localPos, monitor->m_size);
     if (!edge.has_value()) {
-        g_pGlobalState->alreadyActivated = false;
+        g_pGlobalState->alreadyActivated = std::nullopt;
         return;
     }
 
     // If we've already activated from this edge,
     // then don't do it again.
-    if (g_pGlobalState->alreadyActivated)
+    if (g_pGlobalState->alreadyActivated.has_value() && g_pGlobalState->alreadyActivated.value() == edge)
         return;
-    g_pGlobalState->alreadyActivated = true;
+    g_pGlobalState->alreadyActivated = edge;
 
     for (auto edgeEffect : g_pGlobalState->edgeEffects) {
         if (edgeEffect.edge != edge.value())
