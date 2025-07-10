@@ -6,6 +6,7 @@
 #include <hyprland/src/helpers/Monitor.hpp>
 #include <hyprland/src/helpers/MiscFunctions.hpp>
 #include <hyprland/src/managers/PointerManager.hpp>
+#include <hyprland/src/managers/input/InputManager.hpp>
 
 #include "globals.hpp"
 
@@ -119,6 +120,10 @@ void onMouseMove(const Vector2D pos) {
     if (g_pGlobalState->alreadyActivated.has_value() && g_pGlobalState->alreadyActivated.value() == edge)
         return;
     g_pGlobalState->alreadyActivated = edge;
+
+    // If the mouse is constrained to a window, don't activate.
+    if (g_pInputManager->isConstrained())
+        return;
 
     for (auto edgeEffect : g_pGlobalState->edgeEffects) {
         if (edgeEffect.edge != edge.value())
