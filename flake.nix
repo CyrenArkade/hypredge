@@ -2,7 +2,7 @@
   description = "Official Hyprland Plugins";
 
   inputs = {
-    hyprland.url = "github:hyprwm/Hyprland/v0.49.0";
+    hyprland.url = "github:hyprwm/Hyprland/v0.50.0";
     nixpkgs.follows = "hyprland/nixpkgs";
     systems.follows = "hyprland/systems";
   };
