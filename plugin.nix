@@ -3,7 +3,7 @@
   hyprland,
   hyprlandPlugins,
 }:
-hyprlandPlugins.mkHyprlandPlugin hyprland {
+hyprlandPlugins.mkHyprlandPlugin {
   pluginName = "hypredge";
   version = "0.1";
   src = ./.;
