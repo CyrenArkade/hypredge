@@ -144,14 +144,13 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     PHANDLE = handle;
 
-    const std::string HASH = __hyprland_api_get_hash();
+    const std::string HASH        = __hyprland_api_get_hash();
+    const std::string CLIENT_HASH = __hyprland_api_get_client_hash();
 
-    // ALWAYS add this to your plugins. It will prevent random crashes coming from
-    // mismatched header versions.
-    if (HASH != GIT_COMMIT_HASH) {
-        HyprlandAPI::addNotification(PHANDLE, "[hypredge] Mismatched headers! Can't proceed.",
+    if (HASH != CLIENT_HASH) {
+        HyprlandAPI::addNotification(PHANDLE, "[hyprscrolling] Failure in initialization: Version mismatch (headers ver is not equal to running hyprland ver)",
                                      CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
-        throw std::runtime_error("[hypredge] Version mismatch");
+        throw std::runtime_error("[hs] Version mismatch");
     }
 
     g_pGlobalState = makeUnique<SGlobalState>();
