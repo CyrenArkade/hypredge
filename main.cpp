@@ -106,6 +106,8 @@ std::optional<eEdge> getEdge(const Vector2D localPos, const Vector2D monitorSize
 }
 
 void onMouseMove(const Vector2D pos) {
+    static auto* const PRESPECTCONSTRAINTS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hypredge:respect_constraints")->getDataStaticPtr();
+    
     auto monitor = g_pCompositor->getMonitorFromVector(pos);
     auto localPos = pos - monitor->m_position;
 
@@ -122,7 +124,7 @@ void onMouseMove(const Vector2D pos) {
     g_pGlobalState->alreadyActivated = edge;
 
     // If the mouse is constrained to a window, don't activate.
-    if (g_pInputManager->isConstrained())
+    if (**PRESPECTCONSTRAINTS && g_pInputManager->isConstrained())
         return;
 
     for (auto edgeEffect : g_pGlobalState->edgeEffects) {
@@ -156,8 +158,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     g_pGlobalState = makeUnique<SGlobalState>();
 
     HyprlandAPI::addConfigValue(PHANDLE, "plugin:hypredge:corner_barrier", Hyprlang::INT{100});
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hypredge:respect_constraints", Hyprlang::INT{1});
 
-    HyprlandAPI::addConfigKeyword(PHANDLE, "edge-effect", handleEdgeEffect, {false});
+    HyprlandAPI::addConfigKeyword(PHANDLE, "edge_effect", handleEdgeEffect, {false});
 
     HyprlandAPI::addDispatcherV2(PHANDLE, "hypredge:movecursortoedge", moveCursorToEdge);
 

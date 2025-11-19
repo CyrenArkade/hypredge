@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.27)
 
 project(hypredge
-    DESCRIPTION "hypredge plugin for Hyprland"
+    DESCRIPTION "hypredge :3"
     VERSION 0.1
     LANGUAGES CXX
 )

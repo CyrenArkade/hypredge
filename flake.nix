@@ -1,5 +1,5 @@
 {
-  description = "Official Hyprland Plugins";
+  description = "hypredge :3";
 
   inputs = {
     hyprland.url = "github:hyprwm/Hyprland";
