@@ -24,6 +24,7 @@ struct SEdgeEffect {
 struct SGlobalState {
     std::vector<SEdgeEffect> edgeEffects;
     std::optional<eEdge> alreadyActivated;
+    Desktop::Rule::CWindowRuleEffectContainer::storageType ignoreConstraintRuleIdx;
 };
 
 inline UP<SGlobalState> g_pGlobalState;

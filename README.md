@@ -3,11 +3,16 @@ KDE's edge effects for Hyprland.
 
 ### Keywords
 Adds commands of the form `plugin:hypredge:edge_effect = edge, dispatcher, dispatcher_args`.  
+Triggers a dispatcher when the cursor enters a region of a monitor.
 Valid edges are `top`, `bottom`, `left`, `right`, `topleft`, `topright`, `bottomleft`, `bottomright`.
 
 ### Dispatchers
-Adds the dispatcher `hypredge:movecursortoedge`.  
-Valid edges are `top`, `bottom`, `left`, `right`.
+Adds the dispatcher `hypredge:movecursortoedge [top|bottom|left|right]`.  
+Moves cursor to that edge of the screen, not affecting the other axis.
+
+### Window Rule
+Adds the effect `hypredge:ignore_constraints [on|off]`.  
+By default, hypredge will not trigger edge effects if the mouse is constrained. This overrides that, allowing edge effects to always trigger.
 
 ### Example config
 ```
@@ -31,6 +36,11 @@ plugin {
 
         # Corners are also trigger areas!
         edge_effect = topright, exec, dolphin
+
+
     }
 }
+
+# This lets dispatchers trigger when FFXIV is active.
+windowrule = match:title FINAL FANTASY XIV, hypredge:ignore_constraints on
 ```

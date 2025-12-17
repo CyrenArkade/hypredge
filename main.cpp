@@ -7,6 +7,7 @@
 #include <hyprland/src/helpers/MiscFunctions.hpp>
 #include <hyprland/src/managers/PointerManager.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
+#include <hyprland/src/desktop/state/FocusState.hpp>
 
 #include "globals.hpp"
 
@@ -106,9 +107,8 @@ std::optional<eEdge> getEdge(const Vector2D localPos, const Vector2D monitorSize
 }
 
 void onMouseMove(const Vector2D pos) {
-    static auto* const PRESPECTCONSTRAINTS = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hypredge:respect_constraints")->getDataStaticPtr();
-    
     auto monitor = g_pCompositor->getMonitorFromVector(pos);
+    auto window = Desktop::focusState()->window();
     auto localPos = pos - monitor->m_position;
 
     auto edge = getEdge(localPos, monitor->m_size);
@@ -123,8 +123,13 @@ void onMouseMove(const Vector2D pos) {
         return;
     g_pGlobalState->alreadyActivated = edge;
 
-    // If the mouse is constrained to a window, don't activate.
-    if (**PRESPECTCONSTRAINTS && g_pInputManager->isConstrained())
+    // If the mouse is constrained to a window and we don't have hypredge:ignore_constraints, don't activate.
+    if (
+        window
+        && (!window->m_ruleApplicator->m_otherProps.props.contains(g_pGlobalState->ignoreConstraintRuleIdx)
+            || window->m_ruleApplicator->m_otherProps.props[g_pGlobalState->ignoreConstraintRuleIdx]->effect != "on")
+        && g_pInputManager->isConstrained()
+    )
         return;
 
     for (auto edgeEffect : g_pGlobalState->edgeEffects) {
@@ -150,7 +155,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     const std::string CLIENT_HASH = __hyprland_api_get_client_hash();
 
     if (HASH != CLIENT_HASH) {
-        HyprlandAPI::addNotification(PHANDLE, "[hyprscrolling] Failure in initialization: Version mismatch (headers ver is not equal to running hyprland ver)",
+        HyprlandAPI::addNotification(PHANDLE, "[hyprland] Failure in initialization: Version mismatch (headers ver is not equal to running hyprland ver)",
                                      CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
         throw std::runtime_error("[hs] Version mismatch");
     }
@@ -166,6 +171,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     static auto mouseMovePtr = HyprlandAPI::registerCallbackDynamic(PHANDLE, "mouseMove", [&](void* self, SCallbackInfo& info, std::any data) { onMouseMove(std::any_cast<Vector2D>(data)); });
     static auto clearConfigPtr = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preConfigReload", [&](void* self, SCallbackInfo& info, std::any data) { onPreConfigReload(); });
+
+    g_pGlobalState->ignoreConstraintRuleIdx = Desktop::Rule::windowEffects()->registerEffect("hypredge:ignore_constraints");
 
     return {"hypredge", "Trigger dispatchers on screen edges", "CyrenArkade", "0.1"};
 }
