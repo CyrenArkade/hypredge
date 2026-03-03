@@ -8,6 +8,7 @@
 #include <hyprland/src/managers/PointerManager.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
+#include <hyprland/src/event/EventBus.hpp>
 
 #include "globals.hpp"
 
@@ -107,6 +108,7 @@ std::optional<eEdge> getEdge(const Vector2D localPos, const Vector2D monitorSize
 }
 
 void onMouseMove(const Vector2D pos) {
+    
     auto monitor = g_pCompositor->getMonitorFromVector(pos);
     auto window = Desktop::focusState()->window();
     auto localPos = pos - monitor->m_position;
@@ -169,8 +171,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     HyprlandAPI::addDispatcherV2(PHANDLE, "hypredge:movecursortoedge", moveCursorToEdge);
 
-    static auto mouseMovePtr = HyprlandAPI::registerCallbackDynamic(PHANDLE, "mouseMove", [&](void* self, SCallbackInfo& info, std::any data) { onMouseMove(std::any_cast<Vector2D>(data)); });
-    static auto clearConfigPtr = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preConfigReload", [&](void* self, SCallbackInfo& info, std::any data) { onPreConfigReload(); });
+    static auto mouseMovePtr = Event::bus()->m_events.input.mouse.move.listen([&](Vector2D pos, Event::SCallbackInfo& info) { onMouseMove(pos); });
+    static auto clearConfigPtr = Event::bus()->m_events.config.preReload.listen([&] { onPreConfigReload(); });
 
     g_pGlobalState->ignoreConstraintRuleIdx = Desktop::Rule::windowEffects()->registerEffect("hypredge:ignore_constraints");
 
