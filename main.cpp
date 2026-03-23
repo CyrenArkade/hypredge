@@ -9,13 +9,14 @@
 #include <hyprland/src/managers/input/InputManager.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/event/EventBus.hpp>
+#include <hyprutils/string/VarList.hpp>
 
 #include "globals.hpp"
 
 Hyprlang::CParseResult handleEdgeEffect(const char* command, const char* value) {
     Hyprlang::CParseResult result;
 
-    CVarList vars(value);
+    Hyprutils::String::CVarList vars(value);
 
     if (vars[0].empty() || vars[1].empty()) {
         result.setError("requires edge and dispatcher");
