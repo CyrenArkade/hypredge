@@ -2,7 +2,7 @@
   description = "hypredge :3";
 
   inputs = {
-    hyprland.url = "github:hyprwm/Hyprland";
+    hyprland.url = "github:hyprwm/Hyprland?rev=4e3955716619c58a8e9e2f81af5f8f2862e77a1b";
     nixpkgs.follows = "hyprland/nixpkgs";
     systems.follows = "hyprland/systems";
   };

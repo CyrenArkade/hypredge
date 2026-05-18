@@ -2,6 +2,9 @@
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
 
+#include <hyprland/src/config/values/types/BoolValue.hpp>
+#include <hyprland/src/config/values/types/IntValue.hpp>
+
 inline HANDLE PHANDLE = nullptr;
 
 enum eEdge : int8_t {
@@ -17,14 +20,16 @@ enum eEdge : int8_t {
 
 struct SEdgeEffect {
     eEdge edge;
-    std::string dispatcher;
     std::string arg;
 };
 
-struct SGlobalState {
+inline struct {
     std::vector<SEdgeEffect> edgeEffects;
     std::optional<eEdge> alreadyActivated;
-    Desktop::Rule::CWindowRuleEffectContainer::storageType ignoreConstraintRuleIdx;
-};
 
-inline UP<SGlobalState> g_pGlobalState;
+    Desktop::Rule::CWindowRuleEffectContainer::storageType ignoreConstraintRuleIdx;
+
+    struct {
+        SP<Config::Values::CIntValue> corner_barrier;
+    } config;
+} g_state;

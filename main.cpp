@@ -10,82 +10,79 @@
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/event/EventBus.hpp>
 #include <hyprutils/string/VarList.hpp>
+#include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
 
 #include "globals.hpp"
 
-Hyprlang::CParseResult handleEdgeEffect(const char* command, const char* value) {
-    Hyprlang::CParseResult result;
-
-    Hyprutils::String::CVarList vars(value);
-
-    if (vars[0].empty() || vars[1].empty()) {
-        result.setError("requires edge and dispatcher");
-        return result;
-    }
-
-    eEdge edge;
-    if (vars[0] == "top")
-        edge = TOP;
-    else if (vars[0] == "bottom")
-        edge = BOTTOM;
-    else if (vars[0] == "left")
-        edge = LEFT;
-    else if (vars[0] == "right")
-        edge = RIGHT;
-    else if (vars[0] == "topleft")
-        edge = TOPLEFT;
-    else if (vars[0] == "topright")
-        edge = TOPRIGHT;
-    else if (vars[0] == "bottomleft")
-        edge = BOTTOMLEFT;
-    else if (vars[0] == "bottomright")
-        edge = BOTTOMRIGHT;
-    else {
-        result.setError(std::format("invalid edge {}", vars[0]).c_str());
-        return result;
-    }
-
-    const auto DISPATCHER = g_pKeybindManager->m_dispatchers.find(vars[1]);
-    if (DISPATCHER == g_pKeybindManager->m_dispatchers.end()) {
-        result.setError(std::format("invalid dispatcher {}", vars[1]).c_str());
-        return result;
-    }
-
-    g_pGlobalState->edgeEffects.emplace_back(edge, vars[1], vars[2]);
-
-    return result;
+extern "C" {
+#include <lua.h>
+#include <lauxlib.h>
 }
 
-SDispatchResult moveCursorToEdge(std::string args) {
+int defineEdgeEffect(lua_State* L) {
+    std::string_view arg_edge = luaL_checkstring(L, 1);
+    if (!Config::Lua::Bindings::Internal::pushDispatcherFunction(L, 2))
+        return Config::Lua::Bindings::Internal::configError(L, "hl.edge_effect: dispatcher must be a dispatcher (e.g. hl.dsp.window.close()) or a lua function");
+
+    eEdge edge;
+    if (arg_edge == "top")
+        edge = TOP;
+    else if (arg_edge == "bottom")
+        edge = BOTTOM;
+    else if (arg_edge == "left")
+        edge = LEFT;
+    else if (arg_edge == "right")
+        edge = RIGHT;
+    else if (arg_edge == "topleft")
+        edge = TOPLEFT;
+    else if (arg_edge == "topright")
+        edge = TOPRIGHT;
+    else if (arg_edge == "bottomleft")
+        edge = BOTTOMLEFT;
+    else if (arg_edge == "bottomright")
+        edge = BOTTOMRIGHT;
+    else {
+        return Config::Lua::Bindings::Internal::configError(L, "hl.edge_effect: edge must be a valid edge (top, bottom, left, right, topleft, topright, bottomleft, bottomright)");
+    }
+
+    int dispatcher_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    g_state.edgeEffects.emplace_back(edge, std::to_string(dispatcher_ref));
+
+    return true;
+}
+
+int moveCursorToEdge(lua_State* L) {
+    std::string_view arg_edge = luaL_checkstring(L, 1);
+    
     const auto PMONITOR = g_pCompositor->getMonitorFromCursor();
     const auto pos = g_pPointerManager->position();
 
     Vector2D warpTo;
-    if (args == "top")
+    if (arg_edge == "top")
         warpTo = {pos.x, PMONITOR->m_position.y + 1};
-    else if (args == "bottom")
+    else if (arg_edge == "bottom")
         warpTo = {pos.x, PMONITOR->m_position.y + PMONITOR->m_size.y - 2};
-    else if (args == "left")
+    else if (arg_edge == "left")
         warpTo = {PMONITOR->m_position.x + 1, pos.y};
-    else if (args == "right")
+    else if (arg_edge == "right")
         warpTo = {PMONITOR->m_position.x + PMONITOR->m_size.x - 2, pos.y};
     else
-        return {.success = false, .error = std::format("hypredge:movecursortoedge: invalid edge {}", args)};
+        return false;
 
     g_pCompositor->warpCursorTo(warpTo, true);
 
-    return {};
+    return true;
 }
 
 std::optional<eEdge> getEdge(const Vector2D localPos, const Vector2D monitorSize) {
-    static auto* const PCORNERBARRIER = (Hyprlang::INT* const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hypredge:corner_barrier")->getDataStaticPtr();
-
+    const auto CORNER_BARRIER = g_state.config.corner_barrier->value();
+    
     const auto distToTop = localPos.y;
     const auto distToBottom = (monitorSize - localPos).y - 1;
     const auto distToLeft = localPos.x;
     const auto distToRight = (monitorSize - localPos).x - 1;
-    const auto validEdgeX = distToRight > **PCORNERBARRIER && distToLeft > **PCORNERBARRIER;
-    const auto validEdgeY = distToTop > **PCORNERBARRIER && distToBottom > **PCORNERBARRIER;
+    const auto validEdgeX = distToRight > CORNER_BARRIER && distToLeft > CORNER_BARRIER;
+    const auto validEdgeY = distToTop > CORNER_BARRIER && distToBottom > CORNER_BARRIER;
 
     if (!distToTop && !distToLeft)
         return TOPLEFT;
@@ -116,34 +113,34 @@ void onMouseMove(const Vector2D pos) {
 
     auto edge = getEdge(localPos, monitor->m_size);
     if (!edge.has_value()) {
-        g_pGlobalState->alreadyActivated = std::nullopt;
+        g_state.alreadyActivated = std::nullopt;
         return;
     }
 
     // If we've already activated from this edge,
     // then don't do it again.
-    if (g_pGlobalState->alreadyActivated.has_value() && g_pGlobalState->alreadyActivated.value() == edge)
+    if (g_state.alreadyActivated.has_value() && g_state.alreadyActivated.value() == edge)
         return;
-    g_pGlobalState->alreadyActivated = edge;
+    g_state.alreadyActivated = edge;
 
     // If the mouse is constrained to a window and we don't have hypredge:ignore_constraints, don't activate.
     if (
         window
-        && (!window->m_ruleApplicator->m_otherProps.props.contains(g_pGlobalState->ignoreConstraintRuleIdx)
-            || window->m_ruleApplicator->m_otherProps.props[g_pGlobalState->ignoreConstraintRuleIdx]->effect != "on")
+        && (!window->m_ruleApplicator->m_otherProps.props.contains(g_state.ignoreConstraintRuleIdx)
+            || window->m_ruleApplicator->m_otherProps.props[g_state.ignoreConstraintRuleIdx]->effect != "on")
         && g_pInputManager->isConstrained()
     )
         return;
 
-    for (auto edgeEffect : g_pGlobalState->edgeEffects) {
+    for (auto edgeEffect : g_state.edgeEffects) {
         if (edgeEffect.edge != edge.value())
             continue;
-        g_pKeybindManager->m_dispatchers[edgeEffect.dispatcher](edgeEffect.arg);
+        g_pKeybindManager->m_dispatchers["__lua"](edgeEffect.arg);
     }
 }
 
 static void onPreConfigReload() {
-    g_pGlobalState->edgeEffects.clear();
+    g_state.edgeEffects.clear();
 }
 
 // Do NOT change this function.
@@ -163,19 +160,20 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         throw std::runtime_error("[hs] Version mismatch");
     }
 
-    g_pGlobalState = makeUnique<SGlobalState>();
+    g_state.ignoreConstraintRuleIdx = Desktop::Rule::windowEffects()->registerEffect("hypredge_ignore_constraints");
+    g_state.config.corner_barrier = makeShared<Config::Values::CIntValue>("plugin:hypredge:corner_barrier", "Barrier around corners preventing edges from activating.", 100);
 
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hypredge:corner_barrier", Hyprlang::INT{100});
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hypredge:respect_constraints", Hyprlang::INT{1});
-
-    HyprlandAPI::addConfigKeyword(PHANDLE, "edge_effect", handleEdgeEffect, {false});
-
-    HyprlandAPI::addDispatcherV2(PHANDLE, "hypredge:movecursortoedge", moveCursorToEdge);
+    HyprlandAPI::addConfigValueV2(PHANDLE, g_state.config.corner_barrier);
+    
+    HyprlandAPI::addLuaFunction(PHANDLE, "hypredge", "edge_effect", defineEdgeEffect);
+    HyprlandAPI::addLuaFunction(PHANDLE, "hypredge", "move_cursor_to_edge", moveCursorToEdge);
 
     static auto mouseMovePtr = Event::bus()->m_events.input.mouse.move.listen([&](Vector2D pos, Event::SCallbackInfo& info) { onMouseMove(pos); });
     static auto clearConfigPtr = Event::bus()->m_events.config.preReload.listen([&] { onPreConfigReload(); });
 
-    g_pGlobalState->ignoreConstraintRuleIdx = Desktop::Rule::windowEffects()->registerEffect("hypredge:ignore_constraints");
-
     return {"hypredge", "Trigger dispatchers on screen edges", "CyrenArkade", "0.1"};
+}
+
+APICALL EXPORT void PLUGIN_EXIT() {
+    Desktop::Rule::windowEffects()->unregisterEffect(g_state.ignoreConstraintRuleIdx);
 }
