@@ -38,14 +38,15 @@ if hl.plugin.hypredge ~= nil then
   end)
 
   -- You can use any dispatchers you want!
-  hl.plugin.hypredge.edge_effect("right", hl.dsp.exec_cmd("kitty"))
+  hl.plugin.hypredge.edge_effect("bottom", hl.dsp.exec_cmd("kitty"))
 
   -- Corners are also trigger areas!
   hl.plugin.hypredge.edge_effect("topright", hl.dsp.exec_cmd("firefox"))
 
-  -- This lets dispatchers trigger when FFXIV (an application that constrains the mouse) is active.
+  -- This lets dispatchers trigger when FFXIV (an application
+  -- that constrains the mouse) is active.
   hl.window_rule({
-      match = {class = "kitty"},
+      match = { class = "kitty" },
       hypredge_ignore_constraints = "on",
   })
 end
