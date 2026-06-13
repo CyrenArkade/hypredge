@@ -3,12 +3,12 @@
 #include <hyprland/src/includes.hpp>
 
 #include <hyprland/src/Compositor.hpp>
-#include <hyprland/src/helpers/Monitor.hpp>
 #include <hyprland/src/helpers/MiscFunctions.hpp>
 #include <hyprland/src/managers/PointerManager.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/event/EventBus.hpp>
+#include <hyprland/src/state/MonitorState.hpp>
 #include <hyprutils/string/VarList.hpp>
 #include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
 
@@ -54,18 +54,18 @@ int defineEdgeEffect(lua_State* L) {
 int moveCursorToEdge(lua_State* L) {
     std::string_view arg_edge = luaL_checkstring(L, 1);
     
-    const auto PMONITOR = g_pCompositor->getMonitorFromCursor();
     const auto pos = g_pPointerManager->position();
+    const auto monitor = State::monitorState()->query().vec(pos).run();
 
     Vector2D warpTo;
     if (arg_edge == "top")
-        warpTo = {pos.x, PMONITOR->m_position.y + 1};
+        warpTo = {pos.x, monitor->m_position.y + 1};
     else if (arg_edge == "bottom")
-        warpTo = {pos.x, PMONITOR->m_position.y + PMONITOR->m_size.y - 2};
+        warpTo = {pos.x, monitor->m_position.y + monitor->m_size.y - 2};
     else if (arg_edge == "left")
-        warpTo = {PMONITOR->m_position.x + 1, pos.y};
+        warpTo = {monitor->m_position.x + 1, pos.y};
     else if (arg_edge == "right")
-        warpTo = {PMONITOR->m_position.x + PMONITOR->m_size.x - 2, pos.y};
+        warpTo = {monitor->m_position.x + monitor->m_size.x - 2, pos.y};
     else
         return false;
 
@@ -107,7 +107,7 @@ std::optional<eEdge> getEdge(const Vector2D localPos, const Vector2D monitorSize
 
 void onMouseMove(const Vector2D pos) {
     
-    auto monitor = g_pCompositor->getMonitorFromVector(pos);
+    auto monitor = State::monitorState()->query().vec(pos).run();
     auto window = Desktop::focusState()->window();
     auto localPos = pos - monitor->m_position;
 
