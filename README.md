@@ -18,32 +18,7 @@ By default, hypredge will not trigger edge effects if the mouse is constrained. 
 
 ### Example config
 ```lua
-plugin {
-    hypredge {
-        # Prevents edge effects from activating when within this
-        # distance of corners, making corner triggers easier to hit.
-        corner_barrier = 100 # default
-
-        # This emulates workspace switching by screen edge, like in KDE.
-        edge_effect = left, workspace, e-1
-        edge_effect = left, hypredge:movecursortoedge, right
-        edge_effect = right, workspace, e+1
-        edge_effect = right, hypredge:movecursortoedge, left
-
-        # You can use any dispatchers you want!
-        edge_effect = top, exec, kitty
-
-        # Corners are also trigger areas!
-        edge_effect = topright, exec, dolphin
-
-
-    }
-}
-
-windowrule = match:title FINAL FANTASY XIV, hypredge:ignore_constraints on
-
 if hl.plugin.hypredge ~= nil then
-
   hl.config({
     plugin = {
         hypredge = {
@@ -63,15 +38,16 @@ if hl.plugin.hypredge ~= nil then
   end)
 
   -- You can use any dispatchers you want!
-  hl.plugin.hypredge.edge_effect("right", hl.dsp.exec_cmd("kitty"))
+  hl.plugin.hypredge.edge_effect("bottom", hl.dsp.exec_cmd("kitty"))
 
   -- Corners are also trigger areas!
   hl.plugin.hypredge.edge_effect("topright", hl.dsp.exec_cmd("firefox"))
 
-  -- This lets dispatchers trigger when FFXIV (an application that constrains the mouse) is active.
+  -- This lets dispatchers trigger when FFXIV (an application
+  -- that constrains the mouse) is active.
   hl.window_rule({
-      match = {class = "kitty"},
-      hypredge_ignore_constraints = true,
+      match = { class = "kitty" },
+      hypredge_ignore_constraints = "on",
   })
 end
 ```
