@@ -4,7 +4,7 @@
 
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/helpers/MiscFunctions.hpp>
-#include <hyprland/src/managers/PointerManager.hpp>
+#include <hyprland/src/pointer/PointerManager.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
 #include <hyprland/src/desktop/state/FocusState.hpp>
 #include <hyprland/src/event/EventBus.hpp>
@@ -54,7 +54,7 @@ int defineEdgeEffect(lua_State* L) {
 int moveCursorToEdge(lua_State* L) {
     std::string_view arg_edge = luaL_checkstring(L, 1);
     
-    const auto pos = g_pPointerManager->position();
+    const auto pos = Pointer::mgr()->position();
     const auto monitor = State::monitorState()->query().vec(pos).run();
 
     Vector2D warpTo;
@@ -69,7 +69,7 @@ int moveCursorToEdge(lua_State* L) {
     else
         return false;
 
-    g_pCompositor->warpCursorTo(warpTo, true);
+    Pointer::mgr()->warpTo(warpTo);
 
     return true;
 }
