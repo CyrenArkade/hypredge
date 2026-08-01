@@ -45,8 +45,7 @@ int defineEdgeEffect(lua_State* L) {
         return Config::Lua::Bindings::Internal::configError(L, "hl.edge_effect: edge must be a valid edge (top, bottom, left, right, topleft, topright, bottomleft, bottomright)");
     }
 
-    int dispatcher_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    g_state.edgeEffects.emplace_back(edge, std::to_string(dispatcher_ref));
+    g_state.edgeEffects.emplace_back(edge, luaL_ref(L, LUA_REGISTRYINDEX));
 
     return true;
 }
@@ -135,7 +134,8 @@ void onMouseMove(const Vector2D pos) {
     for (auto edgeEffect : g_state.edgeEffects) {
         if (edgeEffect.edge != edge.value())
             continue;
-        g_pKeybindManager->m_dispatchers["__lua"](edgeEffect.arg);
+        // g_pKeybindManager->m_dispatchers["__lua"](edgeEffect.arg);
+        Config::Lua::mgr()->callLuaFnBind(edgeEffect.arg);
     }
 }
 
