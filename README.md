@@ -21,20 +21,20 @@ By default, hypredge will not trigger edge effects if the mouse is constrained. 
 if hl.plugin.hypredge ~= nil then
   hl.config({
     plugin = {
-        hypredge = {
-            corner_barrier = 100 -- default
-        }
+      hypredge = {
+        corner_barrier = 100 -- default
+      }
     }
   })
 
   -- This emulates workspace switching by screen edge, like in KDE.
   hl.plugin.hypredge.edge_effect("left", function()
-      hl.dispatch(hl.dsp.focus({ workspace = "e-1" }))
-      hl.plugin.hypredge.move_cursor_to_edge("right")
+    hl.dispatch(hl.dsp.focus({ workspace = "e-1" }))
+    hl.plugin.hypredge.move_cursor_to_edge("right")
   end)
   hl.plugin.hypredge.edge_effect("right", function()
-      hl.dispatch(hl.dsp.focus({ workspace = "e+1" }))
-      hl.plugin.hypredge.move_cursor_to_edge("left")
+    hl.dispatch(hl.dsp.focus({ workspace = "e+1" }))
+    hl.plugin.hypredge.move_cursor_to_edge("left")
   end)
 
   -- You can use any dispatchers you want!
@@ -43,11 +43,11 @@ if hl.plugin.hypredge ~= nil then
   -- Corners are also trigger areas!
   hl.plugin.hypredge.edge_effect("topright", hl.dsp.exec_cmd("firefox"))
 
-  -- This lets dispatchers trigger when FFXIV (an application
-  -- that constrains the mouse) is active.
+  -- This lets dispatchers trigger when FFXIV is focused.
+  -- Normally, it constrains the mouse meaning edge effects do not fire.
   hl.window_rule({
-      match = { class = "kitty" },
-      hypredge_ignore_constraints = "on",
+    match = { title = "FINAL FANTASY XIV" },
+    hypredge_ignore_constraints = "on",
   })
 end
 ```
