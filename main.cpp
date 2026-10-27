@@ -11,6 +11,9 @@
 #include <hyprland/src/state/MonitorState.hpp>
 #include <hyprutils/string/VarList.hpp>
 #include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
+#include <hyprland/src/config/lua/LuaCaller.hpp>
+#include <hyprland/src/config/lua/LuaEventHandler.hpp>
+#include <hyprland/src/config/lua/LuaRef.hpp>
 
 #include "globals.hpp"
 
@@ -45,7 +48,16 @@ int defineEdgeEffect(lua_State* L) {
         return Config::Lua::Bindings::Internal::configError(L, "hl.edge_effect: edge must be a valid edge (top, bottom, left, right, topleft, topright, bottomleft, bottomright)");
     }
 
-    g_state.edgeEffects.emplace_back(edge, luaL_ref(L, LUA_REGISTRYINDEX));
+    // Get the ID of the dispatcher/callback
+    const auto id = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // Prepare the lua context for the trigger callback
+    auto* mgr = Config::Lua::CConfigManager::fromLuaState(L);
+    const auto ref = makeShared<Config::Lua::CLuaRef>(mgr->luaStateLifetime(), L, -1);
+
+    g_state.edgeEffects.emplace_back(edge, [id, L, mgr, ref] {
+        mgr->caller().call(*ref, Config::Lua::CLuaCaller::LUA_TIMEOUT_KEYBIND_CALLBACK_MS, "hk.plugin.hypredge.edge_effect callback");
+    });
 
     return true;
 }
@@ -134,8 +146,7 @@ void onMouseMove(const Vector2D pos) {
     for (auto edgeEffect : g_state.edgeEffects) {
         if (edgeEffect.edge != edge.value())
             continue;
-        // g_pKeybindManager->m_dispatchers["__lua"](edgeEffect.arg);
-        Config::Lua::mgr()->callLuaFnBind(edgeEffect.arg);
+        edgeEffect.trigger();
     }
 }
 

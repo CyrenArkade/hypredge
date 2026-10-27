@@ -20,7 +20,7 @@ enum eEdge : int8_t {
 
 struct SEdgeEffect {
     eEdge edge;
-    int arg;
+    std::function<void()> trigger;
 };
 
 inline struct {
